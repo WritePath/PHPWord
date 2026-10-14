@@ -901,6 +901,22 @@ abstract class AbstractPart
             }
 
             $style = $this->readStyleDefs($xmlReader, $styleNode, $styleDefs);
+
+            foreach (['down' => 'w:tl2br', 'up' => 'w:tr2bl'] as $direction => $element) {
+                $path = 'w:tcBorders/' . $element;
+                if (!$xmlReader->elementExists($path, $styleNode)) {
+                    continue;
+                }
+
+                // An explicit nil/none border means "no border", not a visible diagonal line.
+                if (in_array($xmlReader->getAttribute('w:val', $styleNode, $path), ['nil', 'none'], true)) {
+                    continue;
+                }
+
+                $style['diagonal'] = $direction;
+
+                break;
+            }
         }
 
         return $style;

@@ -147,6 +147,43 @@ class Cell extends Border
     private $noWrap = true;
 
     /**
+     * Diagonal cell border direction: top-left to bottom-right or top-right to bottom-left.
+     *
+     * @var null|string
+     */
+    private $diagonal;
+
+    /**
+     * Get diagonal cell border direction.
+     *
+     * @return null|string
+     */
+    public function getDiagonal()
+    {
+        return $this->diagonal;
+    }
+
+    /**
+     * Set diagonal cell border direction.
+     *
+     * @param null|string $value down (top-left to bottom-right) or up (top-right to bottom-left)
+     *
+     * @return self
+     */
+    public function setDiagonal($value = null)
+    {
+        if ($value === null) {
+            $this->diagonal = null;
+
+            return $this;
+        }
+
+        $this->diagonal = $this->setEnumVal($value, ['down', 'up'], $this->diagonal);
+
+        return $this;
+    }
+
+    /**
      * Get vertical align.
      *
      * @return null|string

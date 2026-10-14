@@ -19,11 +19,13 @@
 namespace PhpOffice\PhpWordTests\Reader\Word2007;
 
 use Generator;
+use PhpOffice\PhpWord\Element\Table as TableElement;
 use PhpOffice\PhpWord\Element\TextRun;
 use PhpOffice\PhpWord\SimpleType\Border;
 use PhpOffice\PhpWord\SimpleType\TblWidth;
 use PhpOffice\PhpWord\SimpleType\VerticalJc;
 use PhpOffice\PhpWord\Style;
+use PhpOffice\PhpWord\Style\Cell as CellStyle;
 use PhpOffice\PhpWord\Style\Table;
 use PhpOffice\PhpWord\Style\TablePosition;
 use PhpOffice\PhpWordTests\AbstractTestReader;
@@ -50,6 +52,42 @@ class StyleTest extends AbstractTestReader
         self::assertInstanceOf('PhpOffice\PhpWord\Element\Table', $elements[0]);
         self::assertInstanceOf('PhpOffice\PhpWord\Style\Table', $elements[0]->getStyle());
         self::assertEquals(Table::LAYOUT_FIXED, $elements[0]->getStyle()->getLayout());
+    }
+
+    /**
+     * @dataProvider providerDiagonalCellBorder
+     */
+    public function testReadDiagonalCellBorder(string $borders, ?string $expected): void
+    {
+        $documentXml = '<w:tbl>
+            <w:tr>
+                <w:tc>
+                    <w:tcPr><w:tcBorders>' . $borders . '</w:tcBorders></w:tcPr>
+                    <w:p><w:r><w:t>Cell</w:t></w:r></w:p>
+                </w:tc>
+            </w:tr>
+        </w:tbl>';
+
+        $phpWord = $this->getDocumentFromString(['document' => $documentXml]);
+
+        $elements = $phpWord->getSection(0)->getElements();
+        self::assertInstanceOf(TableElement::class, $elements[0]);
+        /** @var TableElement $table */
+        $table = $elements[0];
+        /** @var CellStyle $cellStyle */
+        $cellStyle = $table->getRows()[0]->getCells()[0]->getStyle();
+        self::assertSame($expected, $cellStyle->getDiagonal());
+    }
+
+    public static function providerDiagonalCellBorder(): iterable
+    {
+        yield 'down only' => ['<w:tl2br w:val="single" w:sz="4"/>', 'down'];
+        yield 'up only' => ['<w:tr2bl w:val="single" w:sz="4"/>', 'up'];
+        yield 'both directions prefer down' => ['<w:tl2br w:val="single"/><w:tr2bl w:val="single"/>', 'down'];
+        yield 'nil down is ignored' => ['<w:tl2br w:val="nil"/>', null];
+        yield 'none up is ignored' => ['<w:tr2bl w:val="none"/>', null];
+        yield 'nil down falls back to up' => ['<w:tl2br w:val="nil"/><w:tr2bl w:val="single"/>', 'up'];
+        yield 'no diagonal' => ['<w:top w:val="single" w:sz="4"/>', null];
     }
 
     /**

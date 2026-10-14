@@ -18,6 +18,7 @@
 
 namespace PhpOffice\PhpWordTests\Writer\Word2007\Style;
 
+use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\Shared\Converter;
 use PhpOffice\PhpWord\SimpleType\TblWidth;
 use PhpOffice\PhpWordTests\TestHelperDOCX;
@@ -44,7 +45,7 @@ class TableCellTest extends \PHPUnit\Framework\TestCase
      */
     public function testCellPadding(): void
     {
-        $phpWord = new \PhpOffice\PhpWord\PhpWord();
+        $phpWord = new PhpWord();
         $section = $phpWord->addSection();
         $table = $section->addTable();
         $table->addRow();
@@ -82,5 +83,55 @@ class TableCellTest extends \PHPUnit\Framework\TestCase
         self::assertTrue($doc->elementExists($path));
         self::assertEquals($testValRight, $doc->getElementAttribute($path, 'w:w'));
         self::assertEquals(TblWidth::TWIP, $doc->getElementAttribute($path, 'w:type'));
+    }
+
+    /**
+     * 'down' must write a top-left-to-bottom-right border (w:tl2br, "\"), and
+     * 'up' must write a top-right-to-bottom-left border (w:tr2bl, "/"), with no
+     * border written for the other direction.
+     */
+    public function testCellDiagonal(): void
+    {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        $table = $section->addTable();
+        $table->addRow();
+        $table->addCell(null, ['diagonal' => 'down'])->addText('Down');
+        $table->addCell(null, ['diagonal' => 'up'])->addText('Up');
+        $doc = TestHelperDOCX::getDocument($phpWord, 'Word2007');
+
+        $downCellPath = '/w:document/w:body/w:tbl/w:tr/w:tc[1]/w:tcPr/w:tcBorders';
+        self::assertTrue($doc->elementExists($downCellPath . '/w:tl2br'));
+        self::assertEquals('single', $doc->getElementAttribute($downCellPath . '/w:tl2br', 'w:val'));
+        self::assertFalse($doc->elementExists($downCellPath . '/w:tr2bl'));
+
+        $upCellPath = '/w:document/w:body/w:tbl/w:tr/w:tc[2]/w:tcPr/w:tcBorders';
+        self::assertTrue($doc->elementExists($upCellPath . '/w:tr2bl'));
+        self::assertEquals('single', $doc->getElementAttribute($upCellPath . '/w:tr2bl', 'w:val'));
+        self::assertFalse($doc->elementExists($upCellPath . '/w:tl2br'));
+    }
+
+    /**
+     * Diagonal borders must be written after the ordinary side borders,
+     * as required by the w:tcBorders schema sequence.
+     */
+    public function testCellDiagonalWithSideBorders(): void
+    {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        $table = $section->addTable();
+        $table->addRow();
+        $table->addCell(null, ['borderSize' => 6, 'borderColor' => 'FF0000', 'diagonal' => 'down'])->addText('Down');
+        $table->addCell(null, ['borderSize' => 6, 'borderColor' => 'FF0000', 'diagonal' => 'up'])->addText('Up');
+        $doc = TestHelperDOCX::getDocument($phpWord, 'Word2007');
+
+        foreach ([1 => 'w:tl2br', 2 => 'w:tr2bl'] as $cell => $diagonal) {
+            $path = '/w:document/w:body/w:tbl/w:tr/w:tc[' . $cell . ']/w:tcPr/w:tcBorders';
+            foreach (['w:top', 'w:left', 'w:bottom', 'w:right'] as $side) {
+                self::assertTrue($doc->elementExists($path . '/' . $side));
+                self::assertTrue($doc->elementExists($path . '/' . $diagonal . '/preceding-sibling::' . $side));
+            }
+            self::assertSame($diagonal, $doc->getElement($path . '/*[last()]')->nodeName);
+        }
     }
 }

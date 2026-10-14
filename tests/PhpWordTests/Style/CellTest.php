@@ -65,6 +65,7 @@ class CellTest extends \PHPUnit\Framework\TestCase
             'borderRightColor' => 'FFFF00',
             'borderBottomColor' => 'FFFF00',
             'vMerge' => Cell::VMERGE_RESTART,
+            'diagonal' => 'down',
         ] as $key => $value) {
             $set = "set{$key}";
             $get = "get{$key}";

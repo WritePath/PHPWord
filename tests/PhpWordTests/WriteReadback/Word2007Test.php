@@ -18,10 +18,12 @@
 
 namespace PhpOffice\PhpWordTests\WriteReadback;
 
+use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\Element\TextRun;
 use PhpOffice\PhpWord\Element\Title;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
+use PhpOffice\PhpWord\Style\Cell as CellStyle;
 use PhpOffice\PhpWord\Style\Font;
 use PhpOffice\PhpWord\Writer\Word2007;
 
@@ -52,6 +54,39 @@ class Word2007Test extends \PHPUnit\Framework\TestCase
         $phpWordReader = IOFactory::load($file, 'Word2007');
 
         self::assertEquals($testDefaultFontName, $phpWordReader->getDefaultFontName());
+
+        unlink($file);
+    }
+
+    /**
+     * A diagonal cell border written by the Word2007 writer must be read back into
+     * the same Cell::diagonal value ('down' -> w:tl2br, 'up' -> w:tr2bl).
+     */
+    public function testDiagonalCellBorderRoundtrip(): void
+    {
+        $phpWordWriter = new PhpWord();
+        $section = $phpWordWriter->addSection();
+        $table = $section->addTable();
+        $table->addRow();
+        $table->addCell(null, ['diagonal' => 'down'])->addText('Down');
+        $table->addCell(null, ['diagonal' => 'up'])->addText('Up');
+
+        $writer = new Word2007($phpWordWriter);
+        $file = PHPWORD_TEST_TEMP_DIR . DIRECTORY_SEPARATOR . 'temp.docx';
+        $writer->save($file);
+
+        $phpWordReader = IOFactory::load($file, 'Word2007');
+        $readTable = $phpWordReader->getSections()[0]->getElements()[0];
+        self::assertInstanceOf(Table::class, $readTable);
+        /** @var Table $readTable */
+        $cells = $readTable->getRows()[0]->getCells();
+
+        /** @var CellStyle $downStyle */
+        $downStyle = $cells[0]->getStyle();
+        /** @var CellStyle $upStyle */
+        $upStyle = $cells[1]->getStyle();
+        self::assertSame('down', $downStyle->getDiagonal());
+        self::assertSame('up', $upStyle->getDiagonal());
 
         unlink($file);
     }

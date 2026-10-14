@@ -98,15 +98,27 @@ class Cell extends AbstractStyle
         $xmlWriter->writeElementIf(null !== $vAlign, 'w:vAlign', 'w:val', $vAlign);
 
         // Border
-        if ($style->hasBorder()) {
+        if ($style->hasBorder() || $style->getDiagonal() !== null) {
             $xmlWriter->startElement('w:tcBorders');
 
-            $styleWriter = new MarginBorder($xmlWriter);
-            $styleWriter->setSizes($style->getBorderSize());
-            $styleWriter->setColors($style->getBorderColor());
-            $styleWriter->setStyles($style->getBorderStyle());
-            $styleWriter->setAttributes(['defaultColor' => CellStyle::DEFAULT_BORDER_COLOR]);
-            $styleWriter->write();
+            if ($style->hasBorder()) {
+                $styleWriter = new MarginBorder($xmlWriter);
+                $styleWriter->setSizes($style->getBorderSize());
+                $styleWriter->setColors($style->getBorderColor());
+                $styleWriter->setStyles($style->getBorderStyle());
+                $styleWriter->setAttributes(['defaultColor' => CellStyle::DEFAULT_BORDER_COLOR]);
+                $styleWriter->write();
+            }
+
+            $diagonal = $style->getDiagonal();
+            if ($diagonal !== null) {
+                $xmlWriter->startElement($diagonal === 'down' ? 'w:tl2br' : 'w:tr2bl');
+                $xmlWriter->writeAttribute('w:val', 'single');
+                $xmlWriter->writeAttribute('w:sz', '4');
+                $xmlWriter->writeAttribute('w:space', '0');
+                $xmlWriter->writeAttribute('w:color', CellStyle::DEFAULT_BORDER_COLOR);
+                $xmlWriter->endElement();
+            }
 
             $xmlWriter->endElement();
         }

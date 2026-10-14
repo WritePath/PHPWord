@@ -45,6 +45,7 @@ Available Cell style options:
 - ``border(Top|Right|Bottom|Left)Color``. Border color, e.g. '9966CC'.
 - ``border(Top|Right|Bottom|Left)Size``. Border size in *twip*.
 - ``border(Top|Right|Bottom|Left)Style``. Border style. You can use constants from ``\PhpOffice\PhpWord\SimpleType\Border``
+- ``diagonal``. Diagonal border, *down* (top-left to bottom-right) or *up* (top-right to bottom-left). Supported by the Word2007 reader and writer.
 - ``gridSpan``. Number of columns spanned.
 - ``textDirection(btLr|tbRl)``. Direction of text.
    You can use constants ``\PhpOffice\PhpWord\Style\Cell::TEXT_DIR_BTLR`` and ``\PhpOffice\PhpWord\Style\Cell::TEXT_DIR_TBRL``
