@@ -876,6 +876,84 @@ HTML;
     }
 
     /**
+     * Preserve custom list numbering in the generated DOCX after upstream merges.
+     */
+    public function testCustomListStyles(): void
+    {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        Html::addHtml($section, '<ol><li>Ordered</li></ol><ul><li>Bullet</li></ul>', false, true, [
+            'LIST_STYLES' => [
+                'multilevel' => [
+                    'type' => 'multilevel',
+                    'levels' => [['format' => 'upperRoman', 'text' => '%1)', 'left' => 960]],
+                ],
+                'hybridMultilevel' => [
+                    'type' => 'hybridMultilevel',
+                    'levels' => [['format' => 'bullet', 'text' => '◆', 'left' => 480]],
+                ],
+            ],
+        ]);
+        Html::addHtml($section, '<ol><li>Default</li></ol>');
+
+        $doc = TestHelperDOCX::getDocument($phpWord, 'Word2007');
+        $xmlFile = 'word/numbering.xml';
+        foreach ([['upperRoman', '%1)', '960'], ['bullet', '◆', '480'], ['decimal', '%1.', '720']] as $index => $expected) {
+            $path = '/w:numbering/w:abstractNum[' . ($index + 1) . ']/w:lvl[1]';
+            self::assertSame($expected[0], $doc->getElement($path . '/w:numFmt', $xmlFile)->getAttribute('w:val'));
+            self::assertSame($expected[1], $doc->getElement($path . '/w:lvlText', $xmlFile)->getAttribute('w:val'));
+            self::assertSame($expected[2], $doc->getElement($path . '/w:pPr/w:ind', $xmlFile)->getAttribute('w:left'));
+        }
+    }
+
+    /**
+     * Only the supplied list type is replaced; the other type keeps its built-in definition.
+     */
+    public function testCustomListStylesPartial(): void
+    {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        Html::addHtml($section, '<ol><li>Ordered</li></ol><ul><li>Bullet</li></ul>', false, true, [
+            'LIST_STYLES' => [
+                'multilevel' => [
+                    'type' => 'multilevel',
+                    'levels' => [['format' => 'upperRoman', 'text' => '%1)', 'left' => 960]],
+                ],
+            ],
+        ]);
+
+        $doc = TestHelperDOCX::getDocument($phpWord, 'Word2007');
+        $xmlFile = 'word/numbering.xml';
+        self::assertSame('upperRoman', $doc->getElement('/w:numbering/w:abstractNum[1]/w:lvl[1]/w:numFmt', $xmlFile)->getAttribute('w:val'));
+        self::assertSame('bullet', $doc->getElement('/w:numbering/w:abstractNum[2]/w:lvl[1]/w:numFmt', $xmlFile)->getAttribute('w:val'));
+        self::assertSame('•', $doc->getElement('/w:numbering/w:abstractNum[2]/w:lvl[1]/w:lvlText', $xmlFile)->getAttribute('w:val'));
+    }
+
+    /**
+     * A supplied definition replaces the default one entirely: levels that are not
+     * supplied are not defined, even when the HTML nests deeper.
+     */
+    public function testCustomListStylesWithFewerLevelsThanNesting(): void
+    {
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+        Html::addHtml($section, '<ol><li>One<ol><li>Two<ol><li>Three</li></ol></li></ol></li></ol>', false, true, [
+            'LIST_STYLES' => [
+                'multilevel' => [
+                    'type' => 'multilevel',
+                    'levels' => [['format' => 'upperRoman', 'text' => '%1)', 'left' => 960]],
+                ],
+            ],
+        ]);
+
+        $doc = TestHelperDOCX::getDocument($phpWord, 'Word2007');
+        $xmlFile = 'word/numbering.xml';
+        self::assertSame('upperRoman', $doc->getElement('/w:numbering/w:abstractNum[1]/w:lvl[1]/w:numFmt', $xmlFile)->getAttribute('w:val'));
+        self::assertFalse($doc->elementExists('/w:numbering/w:abstractNum[1]/w:lvl[2]', $xmlFile));
+        self::assertFalse($doc->elementExists('/w:numbering/w:abstractNum[1]/w:lvl[3]', $xmlFile));
+    }
+
+    /**
      * Tests parsing of nested ul/li.
      */
     public function testOrderedNestedListNumbering(): void
